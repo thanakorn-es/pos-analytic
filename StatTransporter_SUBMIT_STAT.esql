@@ -1,0 +1,51 @@
+
+
+CREATE COMPUTE MODULE StatTransporter_SUBMIT_STAT
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE i,count INTEGER 1;
+		SET count = CARDINALITY(InputRoot.JSON.Data.ResultSet[]);
+		SET my_credentials.Item[] = (SELECT CC.SYSTEM_KEY AS SYSTEM_KEY FROM Database.C_CREDENTIALS AS CC, Database.C_ENVIRONMENT AS CE WHERE CC.SYSTEM_CODE = CE.REFCODE AND CE.SYSTEM_NAME = 'Tanda' AND CE.FLAG = 1 );
+		
+		WHILE i < count DO 
+			SET OutputLocalEnvironment.Destination.REST.Request.Parameters."Authorization" = my_credentials.Item[1].SYSTEM_KEY;
+			SET OutputLocalEnvironment.Destination.REST.Request.Parameters."id" = InputRoot.JSON.Data.ResultSet[i].DSID;
+			SET OutputRoot.JSON.Data.time = InputRoot.JSON.Data.ResultSet[i].CREATED_DATE; -- change to unix epoc 
+			SET OutputRoot.JSON.Data.stat = InputRoot.JSON.Data.ResultSet[i].VALUE;
+			
+			SET OutputLocalEnvironment.Variables.establishment = InputRoot.JSON.Data.ResultSet[i].ESTABLISHMENT;
+			SET OutputLocalEnvironment.Variables.created_date = InputRoot.JSON.Data.ResultSet[i].CREATED_DATE;
+			SET OutputLocalEnvironment.Variables.type = InputRoot.JSON.Data.ResultSet[i].TYPE;
+			
+			IF InputRoot.JSON.Data.ResultSet[i].TYPE = 1 THEN
+				SET OutputRoot.JSON.Data.type = "sales";
+			ELSEIF InputRoot.JSON.Data.ResultSet[i].TYPE = 2 THEN
+				SET OutputRoot.JSON.Data.type = "order";
+			ELSEIF InputRoot.JSON.Data.ResultSet[i].TYPE = 3 THEN
+				SET OutputRoot.JSON.Data.type = "sales";
+			ELSEIF InputRoot.JSON.Data.ResultSet[i].TYPE = 4 THEN
+				SET OutputRoot.JSON.Data.type = "order";
+			END IF;
+			
+			PROPAGATE TO TERMINAL 'out' ENVIRONMENT OutputLocalEnvironment MESSAGE OutputRoot;
+			SET i = i + 1;	
+		END WHILE;
+		
+		
+		RETURN FALSE;
+	END;
+
+	CREATE PROCEDURE CopyMessageHeaders() BEGIN
+		DECLARE I INTEGER 1;
+		DECLARE J INTEGER;
+		SET J = CARDINALITY(InputRoot.*[]);
+		WHILE I < J DO
+			SET OutputRoot.*[I] = InputRoot.*[I];
+			SET I = I + 1;
+		END WHILE;
+	END;
+
+	CREATE PROCEDURE CopyEntireMessage() BEGIN
+		SET OutputRoot = InputRoot;
+	END;
+END MODULE;

@@ -1,0 +1,32 @@
+
+
+CREATE COMPUTE MODULE StatTransporter_FLAG_STAT
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+			
+		SET OutputLocalEnvironment.Variables.establishment = InputRoot.JSON.Data.ResultSet[i].ESTABLISHMENT;
+		SET OutputLocalEnvironment.Variables.type = InputRoot.JSON.Data.ResultSet[i].TYPE;
+		
+		UPDATE Database.M_STATISTICS SET STATUS = 1
+			WHERE created_date = OutputLocalEnvironment.Variables.created_date
+				AND type = OutputLocalEnvironment.Variables.type 
+				AND establishment = OutputLocalEnvironment.Variables.establishment;
+		COMMIT;
+		
+		RETURN FALSE;
+	END;
+
+	CREATE PROCEDURE CopyMessageHeaders() BEGIN
+		DECLARE I INTEGER 1;
+		DECLARE J INTEGER;
+		SET J = CARDINALITY(InputRoot.*[]);
+		WHILE I < J DO
+			SET OutputRoot.*[I] = InputRoot.*[I];
+			SET I = I + 1;
+		END WHILE;
+	END;
+
+	CREATE PROCEDURE CopyEntireMessage() BEGIN
+		SET OutputRoot = InputRoot;
+	END;
+END MODULE;
